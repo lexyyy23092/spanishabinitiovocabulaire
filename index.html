@@ -104,6 +104,19 @@ select:focus, input[type=text]:focus{
   font-style:italic;
 }
 
+.mode-banner{
+  text-align:center;
+  font-weight:700;
+  font-size:0.85rem;
+  letter-spacing:0.03em;
+  color:#3d6890;
+  background:#eaf2f8;
+  border:1px solid #c7d9e8;
+  border-radius:7px;
+  padding:8px 10px;
+  margin-bottom:14px;
+}
+
 .card-counter{
   text-align:center;
   font-weight:700;
@@ -193,6 +206,8 @@ button.add-btn:hover{ background:#3d6890; }
       </select>
     </div>
   </div>
+
+  <div class="mode-banner" id="mode-banner">MODO: Alternando</div>
 
   <div class="flashcard-panel" id="flashcard">
     <div class="card-label" id="card-label">ESPAÑOL</div>
@@ -349,7 +364,12 @@ function computeFrontIsSpanish(){
   return pos % 2 === 0; // alternating
 }
 
+function syncDirection(){
+  direction = document.getElementById('direction-select').value;
+}
+
 function render(){
+  syncDirection();
   const total = deck.length;
   document.getElementById('card-counter').textContent = total ? `Tarjeta ${pos+1} de ${total}` : 'Sin tarjetas';
   const card = deck[pos];
@@ -357,6 +377,12 @@ function render(){
   const label = document.getElementById('card-label');
   const word = document.getElementById('card-word');
   const hint = document.getElementById('card-hint');
+  const modeBanner = document.getElementById('mode-banner');
+  if(modeBanner){
+    if(direction === 'es-en') modeBanner.textContent = 'MODO FIJO: Español → English';
+    else if(direction === 'en-es') modeBanner.textContent = 'MODO FIJO: English → Español';
+    else modeBanner.textContent = 'MODO: Alternando';
+  }
   if(!card){
     label.textContent = '';
     word.textContent = 'Añade palabras para empezar';
@@ -400,13 +426,19 @@ function doShuffle(){
   render();
 }
 
-function onUnitChange(){
+function onUnitChange(e){
   currentSelection = document.getElementById('unit-select').value;
   buildDeck(false);
+  e.target.blur();
 }
-function onDirectionChange(){
+function onDirectionChange(e){
   direction = document.getElementById('direction-select').value;
   render();
+  e.target.blur();
+}
+
+function onAddUnitChange(e){
+  e.target.blur();
 }
 
 function addWord(){
@@ -444,14 +476,22 @@ function init(){
 
   document.getElementById('unit-select').addEventListener('change', onUnitChange);
   document.getElementById('direction-select').addEventListener('change', onDirectionChange);
-  document.getElementById('prev-btn').addEventListener('click', goPrev);
-  document.getElementById('next-btn').addEventListener('click', goNext);
-  document.getElementById('shuffle-btn').addEventListener('click', doShuffle);
+  document.getElementById('add-unit-select').addEventListener('change', onAddUnitChange);
+  document.getElementById('prev-btn').addEventListener('click', (e) => { goPrev(); e.currentTarget.blur(); });
+  document.getElementById('next-btn').addEventListener('click', (e) => { goNext(); e.currentTarget.blur(); });
+  document.getElementById('shuffle-btn').addEventListener('click', (e) => { doShuffle(); e.currentTarget.blur(); });
   document.getElementById('flashcard').addEventListener('click', flipCard);
-  document.getElementById('add-btn').addEventListener('click', addWord);
+  document.getElementById('add-btn').addEventListener('click', (e) => { addWord(); e.currentTarget.blur(); });
   document.addEventListener('keydown', (e) => {
-    if(e.key === 'ArrowLeft') goPrev();
-    else if(e.key === 'ArrowRight') goNext();
+    const active = document.activeElement;
+    const tag = active ? active.tagName : '';
+    // Never hijack keys while the user is focused on a dropdown, text field, or button —
+    // arrow keys / space must ONLY flip or advance the flashcard, nothing else.
+    if(tag === 'SELECT' || tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'BUTTON'){
+      return;
+    }
+    if(e.key === 'ArrowLeft'){ e.preventDefault(); goPrev(); }
+    else if(e.key === 'ArrowRight'){ e.preventDefault(); goNext(); }
     else if(e.key === ' '){ e.preventDefault(); flipCard(); }
   });
 }
